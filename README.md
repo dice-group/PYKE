@@ -18,7 +18,7 @@ pip install -r requirements.txt
 ```
 
 ## Reproducing reported results
-- [PYKE Drugbank](https://github.com/pyke-KGE/pyke-KGE/blob/master/PYKE_Drugbank.ipynb) and [PYKE DBpedia](https://github.com/pyke-KGE/pyke-KGE/blob/master/PYKE_DBpedia.ipynb) notebooks elucidates the workflow of PYKE as well as reproduces the results of type prediction and cluster purity evaluations.
+- [PYKE Drugbank](https://github.com/dice-group/PYKE/blob/master/PYKE_Drugbank.ipynb) and [PYKE DBpedia](https://github.com/dice-group/PYKE/blob/master/PYKE_DBpedia.ipynb) notebooks elucidates the workflow of PYKE as well as reproduces the results of type prediction and cluster purity evaluations.
 
 
 
