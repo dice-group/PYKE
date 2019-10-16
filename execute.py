@@ -18,8 +18,8 @@ bound_on_iter = 30
 omega = 0.45557
 e_release = 0.0414
 
-kg_root = 'KGs/DBpedia'
-kg_path = kg_root + '/'
+kg_root = 'KGs/data'
+kg_path = kg_root + '/father_someonly.nt'
 # For N-Quads, please set ut.triple=4. By default ut.triple=3 as KG is N3.
 #ut.triple = 3
 
@@ -50,4 +50,4 @@ learned_embeddings.to_csv(storage_path + '/PYKE_50_embd.csv')
 
 analyser.perform_clustering_quality(learned_embeddings)
 
-analyser.perform_type_prediction(learned_embeddings)
+#analyser.perform_type_prediction(learned_embeddings)
