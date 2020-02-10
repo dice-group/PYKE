@@ -464,7 +464,7 @@ class DataAnalyser(object):
         all_types = sorted(set.union(*list(type_info.values())))
 
         # get only those resources that have type information
-        df_only_subjects = df.loc[list(type_info.keys())]
+        df_only_subjects = df.iloc[list(type_info.keys())]
 
         # Apply clustering
         df_only_subjects = self.pseudo_label_HDBSCAN(df_only_subjects, min_cluster_size=26, min_samples=29)
@@ -501,7 +501,7 @@ class DataAnalyser(object):
         print('Mean of cluster purity', mean_of_scores)
 
     @performance_debugger('Type Prediction')
-    def perform_type_prediction(self, df):
+    def perform_type_prediction(self, df,based_on_num_neigh=3):
 
         def create_binary_type_vector(t_types, a_types):
             vector = np.zeros(len(all_types))
@@ -525,7 +525,7 @@ class DataAnalyser(object):
         # Consider only points with type infos.
         e_w_types = df.loc[list(type_info.keys())]
 
-        neigh = NearestNeighbors(n_neighbors=101, algorithm='kd_tree', metric='euclidean', n_jobs=-1).fit(
+        neigh = NearestNeighbors(n_neighbors=based_on_num_neigh, algorithm='kd_tree', metric='euclidean', n_jobs=-1).fit(
             e_w_types)
 
         # Get similarity results for selected entities

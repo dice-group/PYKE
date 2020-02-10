@@ -46,8 +46,9 @@ learned_embeddings = model.pipeline_of_learning_embeddings(e=embeddings,
 del embeddings
 del holder
 
-learned_embeddings.to_csv(storage_path + '/PYKE_50_embd.csv')
-
 analyser.perform_clustering_quality(learned_embeddings)
+analyser.perform_type_prediction(learned_embeddings)
 
-#analyser.perform_type_prediction(learned_embeddings)
+vocab = ut.deserializer(path=storage_path, serialized_name='vocabulary')
+learned_embeddings.index=vocab
+learned_embeddings.to_csv(storage_path + '/PYKE_50_embd.csv')

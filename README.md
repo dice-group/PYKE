@@ -11,10 +11,9 @@ We evaluated our approach with two benchmark datasets and showed that it outperf
 ## Installation
 
 ```
-python --version
-Python 3.6.4
 git clone https://github.com/pyke-KGE/pyke-KGE.git
-pip install -r requirements.txt
+conda env create -f environment.yml
+python excute.py
 ```
 
 ## Reproducing reported results
