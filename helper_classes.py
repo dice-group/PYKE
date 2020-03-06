@@ -14,8 +14,12 @@ import warnings
 import sys
 from abc import ABC, abstractmethod
 import hdbscan
+import matplotlib.pyplot as plt
+
+from sklearn.decomposition import PCA
 
 warnings.filterwarnings('ignore')
+
 
 def performance_debugger(func_name):
     def function_name_decoratir(func):
@@ -170,7 +174,7 @@ class Parser:
         else:
             for root, dir, files in os.walk(path):
                 for file in files:
-                    if '.nq' in file or '.nt' in file or 'ttl' in file:
+                    if '.nq' in file or '.nt' in file or 'ttl' in file or '.txt' in file:
                         KGs.append(path + '/' + file)
         if len(KGs) == 0:
             print(path + ' is not a path for a file or a folder containing any .nq or .nt formatted files')
@@ -226,7 +230,6 @@ class Parser:
 
         return holder
 
-
     @performance_debugger('Constructing Inverted Index')
     def inverted_index(self, path, bound):
 
@@ -240,9 +243,7 @@ class Parser:
 
         sentences = ut.generator_of_reader(bound, self.get_path_knowledge_graphs(path), self.decompose_rdf)
 
-
         for s, p, o in sentences:
-
 
             num_of_rdf += 1
 
@@ -261,6 +262,9 @@ class Parser:
         print('Number of RDF triples:', num_of_rdf)
         print('Number of vocabulary terms: ', len(vocabulary))
         print('Number of subjects: ', len(type_info))
+
+        if num_of_rdf == 0:
+            exit(1)
 
         assert list(inverted_index.keys()) == list(range(0, len(vocabulary)))
 
@@ -299,13 +303,12 @@ class PYKE(object):
 
         dist = embedding_space[context_indexes] - embedding_space[target_index]
         # replace all zeros to 1 as a normalizer.
-        dist[dist == 0] = 0.1
+        dist[dist == 0] = 0.01
         # replace all
         pull = dist * PMS
         total_pull = np.sum(pull, axis=0)
 
-
-        return total_pull
+        return total_pull, np.abs(dist).sum()
 
     @staticmethod
     def apply_inverse_hooke_s_law(embedding_space, target_index, repulsive_indexes, omega):
@@ -322,40 +325,47 @@ class PYKE(object):
         dist = embedding_space[repulsive_indexes] - embedding_space[target_index]
 
         # replace all zeros to 1
-        dist[dist == 0] = 0.1
+        dist[dist == 0] = 0.01
 
         with warnings.catch_warnings():
             try:
 
                 total_push = -omega * np.reciprocal(dist).sum(axis=0)
 
-                # replace all zeros to 1
-                total_push[total_push == 0] = 0.1
+                # replace all zeros to 1 if needed
+                # total_push[total_push == 0] = 0.01
 
             except RuntimeWarning as r:
                 print(r)
                 print("Unexpected error:", sys.exc_info()[0])
                 exit(1)
 
-        return total_push
+        return total_push, np.abs(dist).sum()
 
     def go_through_entities(self, e, holder, omega):
 
+        sum_pos_sem_dist = 0
+        sum_neg_sem_dist = 0
         for target_index in range(len(e)):
             indexes_of_attractive, pms_of_contest, indexes_of_repulsive = holder[target_index]
 
-            pull = self.apply_hooke_s_law(e, target_index, indexes_of_attractive, pms_of_contest)
+            pull, p = self.apply_hooke_s_law(e, target_index, indexes_of_attractive, pms_of_contest)
 
-            push = self.apply_inverse_hooke_s_law(e, target_index, indexes_of_repulsive,
-                                                                omega)
+            sum_pos_sem_dist += p
+
+            push, n = self.apply_inverse_hooke_s_law(e, target_index, indexes_of_repulsive,
+                                                     omega)
+            sum_neg_sem_dist += n
 
             total_effect = (pull + push) * self.system_energy
 
             e[target_index] = e[target_index] + total_effect
 
+        semantic_distance = dict()
+        semantic_distance['pos'] = sum_pos_sem_dist
+        semantic_distance['neg'] = sum_neg_sem_dist
 
-
-        return e
+        return e, semantic_distance
 
     @performance_debugger('Generating Embeddings:')
     def pipeline_of_learning_embeddings(self, *, e, max_iteration, energy_release_at_epoch, holder, omega):
@@ -365,13 +375,15 @@ class PYKE(object):
 
             previous_f_norm = LA.norm(e, 'fro')
 
-            e = self.go_through_entities(e, holder, omega)
+            e, semantic_dist = self.go_through_entities(e, holder, omega)
 
             self.system_energy = self.system_energy - energy_release_at_epoch
 
-
+            print('Distance:', semantic_dist, ' \t System Energy:', self.system_energy, '\t Distance Ratio:',
+                  semantic_dist['pos'] / semantic_dist['neg'])
 
             e = np.nan_to_num(e)
+
             with warnings.catch_warnings():
                 try:
                     e = (e - e.min(axis=0)) / (e.max(axis=0) - e.min(axis=0))
@@ -381,7 +393,6 @@ class PYKE(object):
                     print(np.isnan(e).any())
                     print(np.isinf(e).any())
                     exit(1)
-
 
             new_f_norm = LA.norm(e, 'fro')
 
@@ -393,10 +404,13 @@ class PYKE(object):
 
     def equilibrium(self, epoch, p_n, n_n):
         val = np.abs(p_n - n_n)
+
         # or d_ratio < 0.1
         if val < self.epsilon or self.system_energy <= 0:
             print("\n Epoch: ", epoch)
             print('System energy:', self.system_energy)
+            print('Diff:', val)
+
             return True
         return False
 
@@ -501,7 +515,7 @@ class DataAnalyser(object):
         print('Mean of cluster purity', mean_of_scores)
 
     @performance_debugger('Type Prediction')
-    def perform_type_prediction(self, df,based_on_num_neigh=3):
+    def perform_type_prediction(self, df, based_on_num_neigh=3):
 
         def create_binary_type_vector(t_types, a_types):
             vector = np.zeros(len(all_types))
@@ -521,11 +535,11 @@ class DataAnalyser(object):
         # get the index of objects / get type information =>>> s #type o
         all_types = sorted(set.union(*list(type_info.values())))
 
-
         # Consider only points with type infos.
         e_w_types = df.loc[list(type_info.keys())]
 
-        neigh = NearestNeighbors(n_neighbors=based_on_num_neigh, algorithm='kd_tree', metric='euclidean', n_jobs=-1).fit(
+        neigh = NearestNeighbors(n_neighbors=based_on_num_neigh, algorithm='kd_tree', metric='euclidean',
+                                 n_jobs=-1).fit(
             e_w_types)
 
         # Get similarity results for selected entities
@@ -537,16 +551,14 @@ class DataAnalyser(object):
         # As sklearn implementation of kneighbors returns the point itself as most similar point
         df_most_similars.drop(columns=[0], inplace=True)
 
-
         # Map back to the original indexes. KNN does not consider the index of Dataframe.
         mapper = dict(zip(list(range(len(e_w_types))), e_w_types.index.values))
         # The values of most similars are mapped to original vocabulary positions
         df_most_similars = df_most_similars.applymap(lambda x: mapper[x])
 
-
         k_values = [1, 3, 5, 10, 15, 30, 50, 100]
 
-        print('K values:',k_values)
+        print('K values:', k_values)
         for k in k_values:
             print('#####', k, '####')
             similarities = list()
@@ -563,3 +575,15 @@ class DataAnalyser(object):
             report = pd.DataFrame(similarities)
             print('Mean type prediction', report.mean().values)
 
+    def plot2D(self, df):
+        pca = PCA(n_components=2)
+        low = pca.fit_transform(df.to_numpy())
+
+        x = low[:, 0]
+        y = low[:, 1]
+        plt.scatter(x, y)
+
+        for i, txt in enumerate(df.index.tolist()):
+            plt.annotate(txt, (x[i], y[i]))
+
+        plt.show()

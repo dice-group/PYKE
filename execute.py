@@ -12,14 +12,15 @@ np.random.seed(random_state)
 random.seed(random_state)
 
 # DEFINE MODEL PARAMS
-K = 45
-num_of_dims = 50
-bound_on_iter = 30
+K = 50
+num_of_dims = 100
+bound_on_iter = 100
 omega = 0.45557
 e_release = 0.0414
 
 kg_root = 'KGs/data'
-kg_path = kg_root + '/father_someonly.nt'
+kg_path = kg_root + '/family-benchmark_rich_background.nt'
+#kg_path = kg_root + '/father.nt'
 # For N-Quads, please set ut.triple=4. By default ut.triple=3 as KG is N3.
 #ut.triple = 3
 
@@ -33,7 +34,7 @@ model = PYKE()
 
 analyser = DataAnalyser(p_folder=storage_path)
 
-holder = parser.pipeline_of_preprocessing(kg_path,bound=1000)
+holder = parser.pipeline_of_preprocessing(kg_path)
 
 vocab_size = len(holder)
 
@@ -52,3 +53,5 @@ analyser.perform_type_prediction(learned_embeddings)
 vocab = ut.deserializer(path=storage_path, serialized_name='vocabulary')
 learned_embeddings.index=vocab
 learned_embeddings.to_csv(storage_path + '/PYKE_50_embd.csv')
+
+analyser.plot2D(learned_embeddings)
