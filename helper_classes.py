@@ -261,7 +261,9 @@ class Parser:
 
         print('Number of RDF triples:', num_of_rdf)
         print('Number of vocabulary terms: ', len(vocabulary))
-        print('Number of subjects: ', len(type_info))
+        print('Number of subjects with type information: ', len(type_info))
+
+        print('Number of types', len(set(itertools.chain.from_iterable(type_info.values()))))
 
         if num_of_rdf == 0:
             exit(1)

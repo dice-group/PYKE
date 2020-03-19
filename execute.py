@@ -12,14 +12,14 @@ np.random.seed(random_state)
 random.seed(random_state)
 
 # DEFINE MODEL PARAMS
-K = 50
-num_of_dims = 100
+K = 100
+num_of_dims = 50
 bound_on_iter = 100
 omega = 0.45557
 e_release = 0.0414
 
 kg_root = 'KGs/data'
-kg_path = kg_root + '/family-benchmark_rich_background.nt'
+kg_path = kg_root + '/carcinogenesis.nt'
 #kg_path = kg_root + '/father.nt'
 # For N-Quads, please set ut.triple=4. By default ut.triple=3 as KG is N3.
 #ut.triple = 3
@@ -47,11 +47,11 @@ learned_embeddings = model.pipeline_of_learning_embeddings(e=embeddings,
 del embeddings
 del holder
 
-analyser.perform_clustering_quality(learned_embeddings)
+#analyser.perform_clustering_quality(learned_embeddings)
 analyser.perform_type_prediction(learned_embeddings)
 
 vocab = ut.deserializer(path=storage_path, serialized_name='vocabulary')
-learned_embeddings.index=vocab
+learned_embeddings.index=[ i.replace('http://example.com/foo#','')for i in vocab]
 learned_embeddings.to_csv(storage_path + '/PYKE_50_embd.csv')
 
 analyser.plot2D(learned_embeddings)
