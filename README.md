@@ -13,7 +13,7 @@ We evaluated our approach with two benchmark datasets and showed that it outperf
 ```
 git clone https://github.com/pyke-KGE/pyke-KGE.git
 conda env create -f environment.yml
-python excute.py
+python execute.py
 ```
 
 ## Reproducing reported results
