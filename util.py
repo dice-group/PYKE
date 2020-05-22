@@ -72,6 +72,8 @@ def generator_of_reader(bound, knowledge_graphs, rdf_decomposer, ):
             # Ignore Literals
             if '"' in sentence or "'" in sentence or '# started' in sentence:
                 continue
+            if len(sentence) < 3:
+                continue
 
             if total_sentence == bound: break
             total_sentence += 1
@@ -85,6 +87,7 @@ def generator_of_reader(bound, knowledge_graphs, rdf_decomposer, ):
                     continue
 
             except ValueError:
+                print('****{0}****'.format(sentence))
                 print('value error')
                 exit(1)
 
