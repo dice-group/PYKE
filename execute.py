@@ -47,6 +47,7 @@ if __name__ == '__main__':
     logger = ut.create_logger(name='PYKE', p=storage_path)
 
     logger.info('Starts')
+    logger.info('Hyperparameters:  {0}'.format(args))
 
     parser = Parser(p_folder=storage_path, k=K)
 
