@@ -1,8 +1,9 @@
+import argparse
+
 from helper_classes import PYKE
 from helper_classes import Parser
 from helper_classes import DataAnalyser
 from helper_classes import PPMI
-
 import util as ut
 import numpy as np
 import random
@@ -11,47 +12,71 @@ random_state = 1
 np.random.seed(random_state)
 random.seed(random_state)
 
-# DEFINE MODEL PARAMS
-K = 100
-num_of_dims = 50
-bound_on_iter = 100
-omega = 0.45557
-e_release = 0.0414
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
 
-kg_root = 'KGs/data'
-kg_path = kg_root + '/carcinogenesis.nt'
-#kg_path = kg_root + '/father.nt'
-# For N-Quads, please set ut.triple=4. By default ut.triple=3 as KG is N3.
-#ut.triple = 3
+    parser.add_argument("--kg_path", type=str, default="KGs/father.nt", nargs="?",
+                        help="Path of dataset.")
+    parser.add_argument("--embedding_dim", type=int, default=20, nargs="?",
+                        help="Number of dimensions in embedding space.")
+    parser.add_argument("--num_iterations", type=int, default=1000, nargs="?",
+                        help="Number of iterations.")
+    parser.add_argument("--K", type=int, default=100, nargs="?",
+                        help="Number of interactions.")
+    parser.add_argument("--omega", type=float, default=0.45557, nargs="?",
+                        help="Omega: a constant in repulsive force calculation.")
+    parser.add_argument("--energy_release", type=float, default=0.0414, nargs="?",
+                        help="Energy release per iteration.")
 
-storage_path, experiment_folder = ut.create_experiment_folder()
+    parser.add_argument("--eval", type=bool, default=True, nargs="?",
+                        help="Perform Type prediction.")
 
-parser = Parser(p_folder=storage_path, k=K)
+    args = parser.parse_args()
+    kg_path = args.kg_path
 
-parser.set_similarity_measure(PPMI)
+    # DEFINE MODEL PARAMS
+    K = args.K
+    num_of_dims = args.embedding_dim
+    bound_on_iter = args.num_iterations
+    omega = args.omega
+    e_release = args.energy_release
 
-model = PYKE()
+    flag_for_type_prediction = args.eval
 
-analyser = DataAnalyser(p_folder=storage_path)
+    storage_path, experiment_folder = ut.create_experiment_folder()
+    logger = ut.create_logger(name='PYKE', p=storage_path)
 
-holder = parser.pipeline_of_preprocessing(kg_path)
+    logger.info('Starts')
 
-vocab_size = len(holder)
+    parser = Parser(p_folder=storage_path, k=K)
 
-embeddings = ut.randomly_initialize_embedding_space(vocab_size, num_of_dims)
+    parser.set_logger(logger)
 
-learned_embeddings = model.pipeline_of_learning_embeddings(e=embeddings,
-                                                           max_iteration=bound_on_iter,
-                                                           energy_release_at_epoch=e_release,
-                                                           holder=holder, omega=omega)
-del embeddings
-del holder
+    parser.set_similarity_measure(PPMI)
 
-#analyser.perform_clustering_quality(learned_embeddings)
-analyser.perform_type_prediction(learned_embeddings)
+    model = PYKE(logger=logger)
 
-vocab = ut.deserializer(path=storage_path, serialized_name='vocabulary')
-learned_embeddings.index=[ i.replace('http://example.com/foo#','')for i in vocab]
-learned_embeddings.to_csv(storage_path + '/PYKE_50_embd.csv')
+    analyser = DataAnalyser(p_folder=storage_path, logger=logger)
 
-analyser.plot2D(learned_embeddings)
+    holder = parser.pipeline_of_preprocessing(kg_path)
+
+    vocab_size = len(holder)
+
+    embeddings = ut.randomly_initialize_embedding_space(vocab_size, num_of_dims)
+
+    learned_embeddings = model.pipeline_of_learning_embeddings(e=embeddings,
+                                                               max_iteration=bound_on_iter,
+                                                               energy_release_at_epoch=e_release,
+                                                               holder=holder, omega=omega)
+    del embeddings
+    del holder
+
+    if flag_for_type_prediction:
+        analyser.perform_type_prediction(learned_embeddings)
+        # analyser.perform_clustering_quality(learned_embeddings)
+
+    vocab = ut.deserializer(path=storage_path, serialized_name='vocabulary')
+    learned_embeddings.index = [i for i in vocab]
+    learned_embeddings.to_csv(storage_path + '/PYKE_50_embd.csv')
+
+    # analyser.plot2D(learned_embeddings)

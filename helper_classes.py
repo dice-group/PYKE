@@ -148,6 +148,10 @@ class Parser:
         self.similarity_function = None
         self.similarity_measurer = None
         self.K = int(k)
+        self.logger = None
+
+    def set_logger(self, logger):
+        self.logger = logger
 
     def set_similarity_function(self, f):
         self.similarity_function = f
@@ -177,15 +181,20 @@ class Parser:
                     if '.nq' in file or '.nt' in file or 'ttl' in file or '.txt' in file:
                         KGs.append(path + '/' + file)
         if len(KGs) == 0:
-            print(path + ' is not a path for a file or a folder containing any .nq or .nt formatted files')
+            self.logger.info(
+                '{0} is not a path for a file or a folder containing any .nq or .nt formatted files'.format(path))
+            self.logger.info('Execution is terminated.')
             exit(1)
         return KGs
 
-    def decompose_rdf(self, sentence):
+    @staticmethod
+    def decompose_rdf(sentence):
 
         flag = 0
 
         components = re.findall('<(.+?)>', sentence)
+        #components = sentence.split()
+
         if len(components) == 2:
             s, p = components
             remaining_sentence = sentence[sentence.index(p) + len(p) + 2:]
@@ -259,24 +268,25 @@ class Parser:
             if 'rdf-syntax-ns#type' in p:
                 type_info[vocabulary[s]].add(vocabulary[o])
 
-        print('Number of RDF triples:', num_of_rdf)
-        print('Number of vocabulary terms: ', len(vocabulary))
-        print('Number of subjects with type information: ', len(type_info))
-
-        print('Number of types', len(set(itertools.chain.from_iterable(type_info.values()))))
+        self.logger.info('Number of RDF triples:\t{0}'.format(num_of_rdf))
+        self.logger.info('Number of vocabulary terms:\t{0}'.format(len(vocabulary)))
+        self.logger.info('Number of subjects with type information:\t{0}'.format(len(type_info)))
+        self.logger.info('Number of types :\t{0}'.format(len(set(itertools.chain.from_iterable(type_info.values())))))
 
         if num_of_rdf == 0:
+            self.logger.info('Exception at parsing dataset: No RDF triple processed.')
+            self.logger.info('Terminating')
             exit(1)
 
         assert list(inverted_index.keys()) == list(range(0, len(vocabulary)))
 
         vocabulary = list(vocabulary.keys())
+        self.logger.info('Vocabulary being serialized. Note that ith vocabulary has ith. representation')
         ut.serializer(object_=vocabulary, path=self.p_folder, serialized_name='vocabulary')
         del vocabulary
 
-        #        inverted_index = np.array(list(inverted_index.values()))
         inverted_index = list(inverted_index.values())
-
+        self.logger.info('Inverted Index being serialized. Note that ith vocabulary term has ith. document')
         ut.serializer(object_=inverted_index, path=self.p_folder, serialized_name='inverted_index')
 
         ut.serializer(object_=type_info, path=self.p_folder, serialized_name='type_info')
@@ -286,11 +296,12 @@ class Parser:
 
 
 class PYKE(object):
-    def __init__(self, epsilon=0.01):
+    def __init__(self, epsilon=0.01, logger=None):
 
         self.epsilon = epsilon
         self.ratio = list()
         self.system_energy = 1
+        self.logger = logger
 
     @staticmethod
     def apply_hooke_s_law(embedding_space, target_index, context_indexes, PMS):
@@ -373,7 +384,7 @@ class PYKE(object):
     def pipeline_of_learning_embeddings(self, *, e, max_iteration, energy_release_at_epoch, holder, omega):
 
         for epoch in range(max_iteration):
-            print('EPOCH: ', epoch)
+            self.logger.info('EPOCH: {0}'.format(epoch))
 
             previous_f_norm = LA.norm(e, 'fro')
 
@@ -381,8 +392,10 @@ class PYKE(object):
 
             self.system_energy = self.system_energy - energy_release_at_epoch
 
-            print('Distance:', semantic_dist, ' \t System Energy:', self.system_energy, '\t Distance Ratio:',
-                  semantic_dist['pos'] / semantic_dist['neg'])
+            self.logger.info(
+                'Distance:{0}\t System Energy:{1} \t Distance Ratio:{2}'.format(semantic_dist, self.system_energy,
+                                                                                semantic_dist['pos'] / semantic_dist[
+                                                                                    'neg']))
 
             e = np.nan_to_num(e)
 
@@ -409,20 +422,18 @@ class PYKE(object):
 
         # or d_ratio < 0.1
         if val < self.epsilon or self.system_energy <= 0:
-            print("\n Epoch: ", epoch)
-            print('System energy:', self.system_energy)
-            print('Diff:', val)
-
+            self.logger.info('Equilibrium is reached.\t Epoch: {0}\t System Energy:{1}\t Euclidiean distance between '
+                             'last two representations: {2}'.format(epoch,self.system_energy,val))
             return True
         return False
 
 
 class DataAnalyser(object):
-    def __init__(self, p_folder: str = 'not initialized',
-                 execute_DL_Learner="Not initialized", kg_path='asd'):
+    def __init__(self, p_folder: str = 'not initialized',logger=None):
 
         self.p_folder = p_folder
         self.kg_path = self.p_folder
+        self.logger=logger
 
     def set_experiment_path(self, p):
         self.p_folder = p
@@ -494,7 +505,7 @@ class DataAnalyser(object):
 
             sum_of_cosines = 0
 
-            print('##### CLUSTER', c, ' #####')
+            self.logger.info('##### CLUSTER {0} #####'.format(c))
 
             for i in valid_indexes_in_c:
 
@@ -514,7 +525,7 @@ class DataAnalyser(object):
             sum_purity += purity
 
         mean_of_scores = sum_purity / len(clusters)
-        print('Mean of cluster purity', mean_of_scores)
+        self.logger('Mean of cluster purity:{0}'.format(mean_of_scores))
 
     @performance_debugger('Type Prediction')
     def perform_type_prediction(self, df, based_on_num_neigh=3):
@@ -560,9 +571,9 @@ class DataAnalyser(object):
 
         k_values = [1, 3, 5, 10, 15, 30, 50, 100]
 
-        print('K values:', k_values)
+        self.logger.info('K values: {0}'.format(k_values))
         for k in k_values:
-            print('#####', k, '####')
+            self.logger.info('##### {0} #####'.format(k))
             similarities = list()
             for _, S in df_most_similars.iterrows():
                 true_types = type_info[_]
@@ -575,7 +586,7 @@ class DataAnalyser(object):
                 similarities.append(1 - sim)
 
             report = pd.DataFrame(similarities)
-            print('Mean type prediction', report.mean().values)
+            self.logger.info('Mean type prediction: {0}'.format(report.mean().values))
 
     def plot2D(self, df):
         pca = PCA(n_components=2)
