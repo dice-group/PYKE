@@ -13,7 +13,7 @@ import time
 import warnings
 import sys
 from abc import ABC, abstractmethod
-import hdbscan
+#import hdbscan
 import matplotlib.pyplot as plt
 
 from sklearn.decomposition import PCA

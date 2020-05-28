@@ -82,6 +82,6 @@ if __name__ == '__main__':
 
     if flag_for_type_prediction:
         analyser.perform_type_prediction(learned_embeddings)
-        analyser.perform_clustering_quality(learned_embeddings)
+        #analyser.perform_clustering_quality(learned_embeddings)
 
     # analyser.plot2D(learned_embeddings)
