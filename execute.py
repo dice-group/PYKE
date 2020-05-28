@@ -29,7 +29,7 @@ if __name__ == '__main__':
     parser.add_argument("--energy_release", type=float, default=0.0414, nargs="?",
                         help="Energy release per iteration.")
 
-    parser.add_argument("--eval", type=bool, default=True, nargs="?",
+    parser.add_argument("--eval", type=bool, default=False, nargs="?",
                         help="Perform Type prediction.")
 
     args = parser.parse_args()
