@@ -7,6 +7,7 @@ from helper_classes import PPMI
 import util as ut
 import numpy as np
 import random
+import pandas as pd
 
 random_state = 1
 np.random.seed(random_state)
@@ -72,12 +73,15 @@ if __name__ == '__main__':
     del embeddings
     del holder
 
-    if flag_for_type_prediction:
-        analyser.perform_type_prediction(learned_embeddings)
-        # analyser.perform_clustering_quality(learned_embeddings)
-
     vocab = ut.deserializer(path=storage_path, serialized_name='vocabulary')
     learned_embeddings.index = [i for i in vocab]
     learned_embeddings.to_csv(storage_path + '/PYKE_50_embd.csv')
+
+    # This crude workaround performed to serialize dataframe with corresponding terms.
+    learned_embeddings.index = [i for i in range(len(vocab))]
+
+    if flag_for_type_prediction:
+        analyser.perform_type_prediction(learned_embeddings)
+        analyser.perform_clustering_quality(learned_embeddings)
 
     # analyser.plot2D(learned_embeddings)

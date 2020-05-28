@@ -525,7 +525,7 @@ class DataAnalyser(object):
             sum_purity += purity
 
         mean_of_scores = sum_purity / len(clusters)
-        self.logger('Mean of cluster purity:{0}'.format(mean_of_scores))
+        self.logger.info('Mean of cluster purity:{0}'.format(mean_of_scores))
 
     @performance_debugger('Type Prediction')
     def perform_type_prediction(self, df, based_on_num_neigh=3):
