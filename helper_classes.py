@@ -4,7 +4,6 @@ from collections import Counter, defaultdict
 import itertools
 from scipy.spatial.distance import cosine
 from sklearn.neighbors import NearestNeighbors
-import util as ut
 import os.path
 from numpy import linalg as LA
 import numpy as np
@@ -13,7 +12,7 @@ import time
 import warnings
 import sys
 from abc import ABC, abstractmethod
-#import hdbscan
+import hdbscan
 import matplotlib.pyplot as plt
 
 from sklearn.decomposition import PCA
@@ -250,7 +249,7 @@ class Parser:
 
         type_info = defaultdict(set)
 
-        sentences = ut.generator_of_reader(bound, self.get_path_knowledge_graphs(path), self.decompose_rdf)
+        sentences = generator_of_reader(bound, self.get_path_knowledge_graphs(path), self.decompose_rdf)
 
         for s, p, o in sentences:
 
@@ -282,14 +281,14 @@ class Parser:
 
         vocabulary = list(vocabulary.keys())
         self.logger.info('Vocabulary being serialized. Note that ith vocabulary has ith. representation')
-        ut.serializer(object_=vocabulary, path=self.p_folder, serialized_name='vocabulary')
+        serializer(object_=vocabulary, path=self.p_folder, serialized_name='vocabulary')
         del vocabulary
 
         inverted_index = list(inverted_index.values())
         self.logger.info('Inverted Index being serialized. Note that ith vocabulary term has ith. document')
-        ut.serializer(object_=inverted_index, path=self.p_folder, serialized_name='inverted_index')
+        serializer(object_=inverted_index, path=self.p_folder, serialized_name='inverted_index')
 
-        ut.serializer(object_=type_info, path=self.p_folder, serialized_name='type_info')
+        serializer(object_=type_info, path=self.p_folder, serialized_name='type_info')
         del type_info
 
         return inverted_index, num_of_rdf, similar_characteristics
@@ -485,7 +484,7 @@ class DataAnalyser(object):
             vector[i] = 1
             return vector
 
-        type_info = ut.deserializer(path=self.p_folder, serialized_name='type_info')
+        type_info = deserializer(path=self.p_folder, serialized_name='type_info')
 
         # get all unique types, i.e. all o : (s,#type,o) \in KG
         all_types = sorted(set.union(*list(type_info.values())))
@@ -543,7 +542,7 @@ class DataAnalyser(object):
             return vector
 
         # get the types. Mapping from the index of subject to the index of object
-        type_info = ut.deserializer(path=self.p_folder, serialized_name='type_info')
+        type_info = deserializer(path=self.p_folder, serialized_name='type_info')
 
         # get the index of objects / get type information =>>> s #type o
         all_types = sorted(set.union(*list(type_info.values())))
@@ -600,3 +599,122 @@ class DataAnalyser(object):
             plt.annotate(txt, (x[i], y[i]))
 
         plt.show()
+
+import datetime
+import logging
+import os
+import pickle
+
+import numpy as np
+
+import bz2
+
+triple = 3
+
+
+def get_path_knowledge_graphs(path: str):
+    """
+
+    :param path: str represents path of a KB or path of folder containg KBs
+    :return:
+    """
+    KGs = list()
+
+    if os.path.isfile(path):
+        KGs.append(path)
+    else:
+        for root, dir, files in os.walk(path):
+            for file in files:
+                print(file)
+                if '.nq' in file or '.nt' in file or 'ttl' in file:
+                    KGs.append(path + '/' + file)
+    if len(KGs) == 0:
+        print(path + ' is not a path for a file or a folder containing any .nq or .nt formatted files')
+        exit(1)
+    return KGs
+
+
+def file_type(f_name):
+    if f_name[-4:] == '.bz2':
+        reader = bz2.open(f_name, "rt")
+        return reader
+    return open(f_name, "r")
+
+
+def create_experiment_folder():
+    directory = os.getcwd() + '/Experiments/'
+    folder_name = str(datetime.datetime.now())
+    path_of_folder = directory + folder_name
+    os.makedirs(path_of_folder)
+    return path_of_folder, path_of_folder[:path_of_folder.rfind('/')]
+
+
+def serializer(*, object_: object, path: str, serialized_name: str):
+    with open(path + '/' + serialized_name + ".p", "wb") as f:
+        pickle.dump(object_, f)
+    f.close()
+
+
+def deserializer(*, path: str, serialized_name: str):
+    with open(path + "/" + serialized_name + ".p", "rb") as f:
+        obj_ = pickle.load(f)
+    f.close()
+    return obj_
+
+
+def randomly_initialize_embedding_space(num_vocab, embeddings_dim):
+    return np.random.rand(num_vocab, embeddings_dim)
+
+
+def generator_of_reader(bound, knowledge_graphs, rdf_decomposer, ):
+    for f_name in knowledge_graphs:
+        reader = file_type(f_name)
+        total_sentence = 0
+        for sentence in reader:
+            # Ignore Literals
+            if '"' in sentence or "'" in sentence or '# started' in sentence:
+                continue
+            if len(sentence) < 3:
+                continue
+
+            if total_sentence == bound: break
+            total_sentence += 1
+
+            try:
+                s, p, o, flag = rdf_decomposer(sentence)
+
+                # <..> <..> <..>
+                if flag != triple:
+                    print(sentence, '+', flag)
+                    continue
+
+            except ValueError:
+                print('****{0}****'.format(sentence))
+                print('value error')
+                exit(1)
+
+            yield s, p, o
+
+        reader.close()
+
+def create_logger(*, name, p):
+    logger = logging.getLogger(name)
+
+    logger.setLevel(logging.INFO)
+    # create file handler which logs even debug messages
+    fh = logging.FileHandler(p + '/info.log')
+    fh.setLevel(logging.INFO)
+
+    # create console handler with a higher log level
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.INFO)
+
+    # create formatter and add it to the handlers
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    ch.setFormatter(formatter)
+    fh.setFormatter(formatter)
+    # add the handlers to logger
+    logger.addHandler(ch)
+    logger.addHandler(fh)
+
+    return logger

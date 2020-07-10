@@ -1,10 +1,6 @@
 import argparse
 
-from helper_classes import PYKE
-from helper_classes import Parser
-from helper_classes import DataAnalyser
-from helper_classes import PPMI
-import util as ut
+from helper_classes import *
 import numpy as np
 import random
 import pandas as pd
@@ -29,7 +25,7 @@ if __name__ == '__main__':
     parser.add_argument("--energy_release", type=float, default=0.0414, nargs="?",
                         help="Energy release per iteration.")
 
-    parser.add_argument("--eval", type=bool, default=False, nargs="?",
+    parser.add_argument("--eval", type=bool, default=True, nargs="?",
                         help="Perform Type prediction.")
 
     args = parser.parse_args()
@@ -44,8 +40,8 @@ if __name__ == '__main__':
 
     flag_for_type_prediction = args.eval
 
-    storage_path, experiment_folder = ut.create_experiment_folder()
-    logger = ut.create_logger(name='PYKE', p=storage_path)
+    storage_path, experiment_folder = create_experiment_folder()
+    logger = create_logger(name='PYKE', p=storage_path)
 
     logger.info('Starts')
     logger.info('Hyperparameters:  {0}'.format(args))
@@ -64,7 +60,7 @@ if __name__ == '__main__':
 
     vocab_size = len(holder)
 
-    embeddings = ut.randomly_initialize_embedding_space(vocab_size, num_of_dims)
+    embeddings = randomly_initialize_embedding_space(vocab_size, num_of_dims)
 
     learned_embeddings = model.pipeline_of_learning_embeddings(e=embeddings,
                                                                max_iteration=bound_on_iter,
@@ -73,7 +69,7 @@ if __name__ == '__main__':
     del embeddings
     del holder
 
-    vocab = ut.deserializer(path=storage_path, serialized_name='vocabulary')
+    vocab = deserializer(path=storage_path, serialized_name='vocabulary')
     learned_embeddings.index = [i for i in vocab]
     learned_embeddings.to_csv(storage_path + '/PYKE_50_embd.csv')
 
@@ -82,6 +78,6 @@ if __name__ == '__main__':
 
     if flag_for_type_prediction:
         analyser.perform_type_prediction(learned_embeddings)
-        #analyser.perform_clustering_quality(learned_embeddings)
+        analyser.perform_clustering_quality(learned_embeddings)
 
     # analyser.plot2D(learned_embeddings)
